@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>출퇴근 기록</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c28;
+    --border: #2a2a3a;
+    --accent: #7c6af7;
+    --accent2: #f76a8a;
+    --accent3: #6af7c4;
+    --text: #e8e8f0;
+    --text2: #8888aa;
+    --text3: #55556a;
+    --card-glow: rgba(124, 106, 247, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    max-width: 430px;
+    margin: 0 auto;
+    overflow-x: hidden;
+  }
+
+  /* Status bar */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text2);
+  }
+
+  /* Header */
+  .header {
+    padding: 8px 20px 20px;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header .date-str {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text3);
+    margin-top: 2px;
+  }
+
+  /* Today card */
+  .today-card {
+    margin: 0 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .today-card::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(124,106,247,0.2) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .today-card .label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 16px;
+  }
+  .time-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .time-item {
+    background: var(--surface2);
+    border-radius: 16px;
+    padding: 14px;
+  }
+  .time-item .t-label {
+    font-size: 10px;
+    color: var(--text3);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .time-item .t-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .time-item .t-value.empty { color: var(--text3); font-size: 18px; }
+  .time-item.in-item .t-label { color: var(--accent); }
+  .time-item.out-item .t-label { color: var(--accent2); }
+
+  .duration-row {
+    background: linear-gradient(135deg, rgba(124,106,247,0.15), rgba(247,106,138,0.1));
+    border: 1px solid rgba(124,106,247,0.2);
+    border-radius: 14px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .duration-row .d-label { font-size: 12px; color: var(--text2); }
+  .duration-row .d-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--accent3);
+  }
+
+  /* Action buttons */
+  .btn-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 0 16px 24px;
+  }
+  .btn {
+    border: none;
+    border-radius: 20px;
+    padding: 18px 12px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn .btn-icon { font-size: 22px; }
+  .btn-in {
+    background: linear-gradient(135deg, var(--accent), #9b8dff);
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(124,106,247,0.4);
+  }
+  .btn-out {
+    background: linear-gradient(135deg, var(--accent2), #ff9aaa);
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(247,106,138,0.4);
+  }
+  .btn:disabled {
+    opacity: 0.35;
+    box-shadow: none;
+    cursor: default;
+  }
+
+  /* Stats section */
+  .section-title {
+    padding: 0 20px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 0 16px 24px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 16px;
+  }
+  .stat-card .s-label {
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .stat-card .s-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 24px;
+    font-weight: 400;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .stat-card .s-sub { font-size: 11px; color: var(--text3); }
+  .stat-card.highlight { border-color: rgba(124,106,247,0.3); background: linear-gradient(135deg, rgba(124,106,247,0.08), var(--surface)); }
+
+  /* 8-week chart */
+  .chart-card {
+    margin: 0 16px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 20px;
+  }
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .chart-header .ch-title { font-size: 14px; font-weight: 700; }
+  .chart-header .ch-avg {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  .bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 100px;
+    position: relative;
+  }
+  .bar-chart::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    top: 33%; bottom: 0;
+    border-top: 1px dashed var(--border);
+    pointer-events: none;
+  }
+  .bar-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    height: 100%;
+    justify-content: flex-end;
+  }
+  .bar-fill {
+    width: 100%;
+    border-radius: 6px 6px 2px 2px;
+    background: linear-gradient(to top, var(--accent), rgba(124,106,247,0.4));
+    min-height: 4px;
+    transition: height 0.4s ease;
+    position: relative;
+  }
+  .bar-fill.current { background: linear-gradient(to top, var(--accent3), rgba(106,247,196,0.4)); }
+  .bar-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--text3);
+    text-align: center;
+  }
+
+  /* History list */
+  .history-list {
+    margin: 0 16px 100px;
+  }
+  .history-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .history-item .h-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+  .history-item .h-date {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text2);
+    flex: 1;
+  }
+  .history-item .h-times {
+    font-size: 11px;
+    color: var(--text3);
+    text-align: right;
+    line-height: 1.6;
+  }
+  .history-item .h-dur {
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    min-width: 50px;
+    text-align: right;
+  }
+
+  /* Nav */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    background: rgba(10,10,15,0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding: 12px 0 24px;
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    padding: 4px;
+    transition: all 0.15s;
+  }
+  .nav-item .n-icon { font-size: 22px; opacity: 0.4; }
+  .nav-item .n-label { font-size: 10px; color: var(--text3); font-weight: 500; }
+  .nav-item.active .n-icon { opacity: 1; }
+  .nav-item.active .n-label { color: var(--accent); }
+
+  /* Pages */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Time input overlay */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .overlay.show { display: flex; }
+  .overlay-card {
+    background: var(--surface);
+    border-radius: 28px 28px 0 0;
+    padding: 24px 20px 40px;
+    width: 100%;
+    max-width: 430px;
+    border: 1px solid var(--border);
+    border-bottom: none;
+  }
+  .overlay-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  .overlay-card .time-input {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .time-input input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    font-family: 'DM Mono', monospace;
+    font-size: 32px;
+    font-weight: 400;
+    color: var(--text);
+    width: 90px;
+    text-align: center;
+    outline: none;
+  }
+  .time-input input:focus { border-color: var(--accent); }
+  .time-input .sep { font-size: 32px; color: var(--text3); font-weight: 300; }
+  .overlay-btns { display: flex; gap: 12px; }
+  .o-btn {
+    flex: 1;
+    padding: 16px;
+    border-radius: 16px;
+    border: none;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .o-btn.cancel { background: var(--surface2); color: var(--text2); }
+  .o-btn.confirm { background: var(--accent); color: #fff; }
+
+  /* Ripple */
+  .ripple { position: absolute; border-radius: 50%; background: rgba(255,255,255,0.2); transform: scale(0); animation: rippleAnim 0.5s linear; pointer-events: none; }
+  @keyframes rippleAnim { to { transform: scale(4); opacity: 0; } }
+
+  /* Warning banner */
+  .warning-banner {
+    display: none;
+    margin: 0 16px 16px;
+    background: linear-gradient(135deg, rgba(247, 106, 60, 0.18), rgba(247, 60, 60, 0.1));
+    border: 1px solid rgba(247, 106, 60, 0.45);
+    border-radius: 18px;
+    padding: 14px 16px;
+    animation: warnPulse 2.5s ease-in-out infinite;
+  }
+  .warning-banner.show { display: flex; align-items: center; gap: 12px; }
+  @keyframes warnPulse {
+    0%, 100% { border-color: rgba(247, 106, 60, 0.45); box-shadow: none; }
+    50% { border-color: rgba(247, 106, 60, 0.85); box-shadow: 0 0 16px rgba(247,106,60,0.2); }
+  }
+  .warn-icon { font-size: 24px; flex-shrink: 0; }
+  .warn-text { flex: 1; }
+  .warn-text .w-title { font-size: 13px; font-weight: 700; color: #ff8c5a; margin-bottom: 2px; }
+  .warn-text .w-desc { font-size: 11px; color: var(--text2); line-height: 1.5; }
+
+  /* 8w avg card warning state */
+  .stat-card.warning {
+    border-color: rgba(247, 106, 60, 0.4) !important;
+    background: linear-gradient(135deg, rgba(247,106,60,0.1), var(--surface)) !important;
+  }
+  .stat-card.warning .s-value { color: #ff8c5a !important; }
+  .stat-card.warning .s-label { color: #ff8c5a !important; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 0; }
+</style>
+</head>
+<body>
+
+<!-- Pages -->
+<div id="page-home" class="page active">
+  <div class="status-bar">
+    <span id="clock">--:--</span>
+    <span>📶 🔋</span>
+  </div>
+  <div class="header">
+    <h1>출퇴근 기록</h1>
+    <div class="date-str" id="today-str"></div>
+  </div>
+
+  <!-- Warning Banner -->
+  <div class="warning-banner" id="warning-banner">
+    <span class="warn-icon">⚠️</span>
+    <div class="warn-text">
+      <div class="w-title">8주 평균 근무시간 부족</div>
+      <div class="w-desc">최근 8주 평균이 <strong style="color:#ff8c5a" id="warn-val">--</strong>로 기준(4시간) 미달입니다</div>
+    </div>
+  </div>
+
+  <div class="today-card">
+    <div class="label">오늘</div>
+    <div class="time-row">
+      <div class="time-item in-item">
+        <div class="t-label">출근</div>
+        <div class="t-value" id="today-in">--:--</div>
+      </div>
+      <div class="time-item out-item">
+        <div class="t-label">퇴근</div>
+        <div class="t-value" id="today-out">--:--</div>
+      </div>
+    </div>
+    <div class="duration-row">
+      <span class="d-label">근무시간</span>
+      <span class="d-value" id="today-dur">- h --m</span>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-in" id="btn-in" onclick="openOverlay('in')">
+      <span class="btn-icon">🌅</span>
+      <span>출근 기록</span>
+    </button>
+    <button class="btn btn-out" id="btn-out" onclick="openOverlay('out')">
+      <span class="btn-icon">🌆</span>
+      <span>퇴근 기록</span>
+    </button>
+  </div>
+
+  <div class="section-title">통계</div>
+  <div class="stats-grid">
+    <div class="stat-card highlight">
+      <div class="s-label">일일 평균</div>
+      <div class="s-value" id="stat-daily-avg">--</div>
+      <div class="s-sub">근무시간</div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">이번주 기록</div>
+      <div class="s-value" id="stat-week-count">0</div>
+      <div class="s-sub">일 출근</div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">8주 평균</div>
+      <div class="s-value" id="stat-8w-avg">--</div>
+      <div class="s-sub">근무시간</div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">평균 출근시각</div>
+      <div class="s-value" id="stat-avg-in" style="font-size:18px">--:--</div>
+      <div class="s-sub">최근 8주</div>
+    </div>
+  </div>
+</div>
+
+<div id="page-chart" class="page">
+  <div class="status-bar">
+    <span id="clock2">--:--</span>
+    <span>📶 🔋</span>
+  </div>
+  <div class="header">
+    <h1>주간 분석</h1>
+    <div class="date-str">최근 8주 데이터</div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-header">
+      <div class="ch-title">주별 평균 근무시간</div>
+      <div class="ch-avg" id="chart-avg-label">--h --m</div>
+    </div>
+    <div class="bar-chart" id="bar-chart"></div>
+  </div>
+  <div class="section-title">주차별 상세</div>
+  <div id="week-detail" style="margin: 0 16px 100px;"></div>
+</div>
+
+<div id="page-history" class="page">
+  <div class="status-bar">
+    <span id="clock3">--:--</span>
+    <span>📶 🔋</span>
+  </div>
+  <div class="header">
+    <h1>기록 내역</h1>
+    <div class="date-str" id="hist-count"></div>
+  </div>
+  <div class="history-list" id="history-list"></div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <div class="nav-item active" onclick="switchPage('home',this)">
+    <span class="n-icon">🏠</span>
+    <span class="n-label">홈</span>
+  </div>
+  <div class="nav-item" onclick="switchPage('chart',this)">
+    <span class="n-icon">📊</span>
+    <span class="n-label">분석</span>
+  </div>
+  <div class="nav-item" onclick="switchPage('history',this)">
+    <span class="n-icon">📋</span>
+    <span class="n-label">기록</span>
+  </div>
+</div>
+
+<!-- Overlay -->
+<div class="overlay" id="overlay">
+  <div class="overlay-card">
+    <h3 id="overlay-title">출근 시간 입력</h3>
+    <div class="time-input">
+      <input type="number" id="input-hour" min="0" max="23" placeholder="09">
+      <span class="sep">:</span>
+      <input type="number" id="input-min" min="0" max="59" placeholder="00">
+    </div>
+    <div class="overlay-btns">
+      <button class="o-btn cancel" onclick="closeOverlay()">취소</button>
+      <button class="o-btn confirm" onclick="saveTime()">기록하기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'work_records_v2';
+  let currentMode = 'in';
+  let records = {};
+
+  // Load from localStorage
+  function load() {
+    try {
+      const d = localStorage.getItem(STORAGE_KEY);
+      records = d ? JSON.parse(d) : {};
+    } catch(e) { records = {}; }
+  }
+
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  }
+
+  function todayKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  function formatTime(h, m) {
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  }
+
+  function minToHm(mins) {
+    if (!mins || mins <= 0) return '--';
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m > 0 ? `${h}h ${String(m).padStart(2,'0')}m` : `${h}h`;
+  }
+
+  function getDuration(rec) {
+    if (!rec.in || !rec.out) return null;
+    const [ih, im] = rec.in.split(':').map(Number);
+    const [oh, om] = rec.out.split(':').map(Number);
+    return (oh * 60 + om) - (ih * 60 + im);
+  }
+
+  function updateClock() {
+    const n = new Date();
+    const t = formatTime(n.getHours(), n.getMinutes());
+    document.getElementById('clock').textContent = t;
+    document.getElementById('clock2').textContent = t;
+    document.getElementById('clock3').textContent = t;
+  }
+
+  function updateHome() {
+    const key = todayKey();
+    const rec = records[key] || {};
+    const d = new Date();
+    const days = ['일','월','화','수','목','금','토'];
+    document.getElementById('today-str').textContent =
+      `${d.getFullYear()}. ${d.getMonth()+1}. ${d.getDate()}. (${days[d.getDay()]})`;
+
+    document.getElementById('today-in').textContent = rec.in || '--:--';
+    document.getElementById('today-in').className = 't-value' + (rec.in ? '' : ' empty');
+    document.getElementById('today-out').textContent = rec.out || '--:--';
+    document.getElementById('today-out').className = 't-value' + (rec.out ? '' : ' empty');
+
+    const dur = getDuration(rec);
+    document.getElementById('today-dur').textContent = dur ? minToHm(dur) : '- h --m';
+
+    // Buttons
+    document.getElementById('btn-in').disabled = !!rec.in;
+    document.getElementById('btn-out').disabled = !rec.in;
+
+    // Stats
+    const all = Object.entries(records).sort((a,b) => a[0].localeCompare(b[0]));
+    const durations = all.map(([k,r]) => getDuration(r)).filter(v => v && v > 0);
+
+    if (durations.length > 0) {
+      const avg = Math.round(durations.reduce((a,b)=>a+b,0) / durations.length);
+      document.getElementById('stat-daily-avg').textContent = minToHm(avg);
+    }
+
+    // This week count
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay() + 1);
+    let weekCount = 0;
+    all.forEach(([k]) => { if (k >= weekStart.toISOString().slice(0,10) && k <= todayKey()) weekCount++; });
+    document.getElementById('stat-week-count').textContent = weekCount;
+
+    // 8 week avg + warning
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 56);
+    const cut = cutoff.toISOString().slice(0,10);
+    const w8 = all.filter(([k]) => k >= cut).map(([k,r]) => getDuration(r)).filter(v => v && v > 0);
+    const w8card = document.querySelector('#stat-8w-avg').closest('.stat-card');
+    const banner = document.getElementById('warning-banner');
+    if (w8.length > 0) {
+      const avg8w = Math.round(w8.reduce((a,b)=>a+b,0)/w8.length);
+      document.getElementById('stat-8w-avg').textContent = minToHm(avg8w);
+      const isWarning = avg8w < 240; // 4 hours = 240 min
+      banner.classList.toggle('show', isWarning);
+      w8card.classList.toggle('warning', isWarning);
+      if (isWarning) document.getElementById('warn-val').textContent = minToHm(avg8w);
+    } else {
+      banner.classList.remove('show');
+      w8card.classList.remove('warning');
+    }
+
+    // Avg in time
+    const inTimes = all.filter(([k,r]) => r.in && k >= cut).map(([k,r]) => {
+      const [h,m] = r.in.split(':').map(Number); return h*60+m;
+    });
+    if (inTimes.length > 0) {
+      const avg = Math.round(inTimes.reduce((a,b)=>a+b,0)/inTimes.length);
+      document.getElementById('stat-avg-in').textContent = formatTime(Math.floor(avg/60), avg%60);
+    }
+  }
+
+  function getWeeklyData() {
+    const weeks = [];
+    for (let w = 7; w >= 0; w--) {
+      const start = new Date(); start.setDate(start.getDate() - start.getDay() + 1 - w*7);
+      const end = new Date(start); end.setDate(start.getDate() + 6);
+      const startKey = start.toISOString().slice(0,10);
+      const endKey = end.toISOString().slice(0,10);
+      const days = Object.entries(records).filter(([k]) => k >= startKey && k <= endKey);
+      const durs = days.map(([k,r]) => getDuration(r)).filter(v => v && v > 0);
+      const avg = durs.length > 0 ? Math.round(durs.reduce((a,b)=>a+b,0)/durs.length) : 0;
+      const label = `${start.getMonth()+1}/${start.getDate()}`;
+      weeks.push({ label, avg, count: durs.length, startKey, endKey });
+    }
+    return weeks;
+  }
+
+  function updateChart() {
+    const weeks = getWeeklyData();
+    const maxVal = Math.max(...weeks.map(w => w.avg), 1);
+    const allAvg = weeks.filter(w => w.avg > 0);
+    const totalAvg = allAvg.length > 0 ? Math.round(allAvg.reduce((a,b) => a+b.avg, 0)/allAvg.length) : 0;
+
+    document.getElementById('chart-avg-label').textContent = totalAvg > 0 ? minToHm(totalAvg) : '기록 없음';
+
+    const chart = document.getElementById('bar-chart');
+    const currentWeekIdx = 7;
+    const refLine = maxVal > 0 ? Math.round((240 / maxVal) * 86) : 0; // 4h = 240min reference line position
+    chart.style.position = 'relative';
+    chart.innerHTML = weeks.map((w, i) => {
+      const pct = maxVal > 0 ? Math.max((w.avg / maxVal) * 86, w.avg > 0 ? 6 : 0) : 0;
+      const isCurrent = i === currentWeekIdx;
+      const isLow = w.avg > 0 && w.avg < 240;
+      let barStyle = '';
+      if (isLow) barStyle = 'background: linear-gradient(to top, #f76a3c, rgba(247,106,60,0.4));';
+      else if (isCurrent) barStyle = '';
+      return `<div class="bar-wrap">
+        <div class="bar-fill${isCurrent && !isLow ? ' current' : ''}" style="height:${pct}px;${barStyle}"></div>
+        <div class="bar-label">${w.label}</div>
+      </div>`;
+    }).join('') + `<div style="position:absolute;left:0;right:0;bottom:${refLine + 18}px;border-top:1px dashed rgba(247,106,60,0.5);pointer-events:none;"><span style="position:absolute;right:0;top:-14px;font-size:9px;color:rgba(247,106,60,0.7);font-family:'DM Mono',monospace;">4h</span></div>`;
+
+    const detail = document.getElementById('week-detail');
+    detail.innerHTML = [...weeks].reverse().map((w, i) => {
+      const label = i === 0 ? '이번 주' : `${w.label} 주`;
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:13px;font-weight:600;">${label}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">${w.count}일 기록</div>
+        </div>
+        <div style="font-family:'DM Mono',monospace;font-size:16px;color:var(--accent);">${w.avg > 0 ? minToHm(w.avg) : '-'}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function updateHistory() {
+    const all = Object.entries(records).sort((a,b) => b[0].localeCompare(a[0]));
+    document.getElementById('hist-count').textContent = `총 ${all.length}일 기록`;
+    const list = document.getElementById('history-list');
+    if (all.length === 0) {
+      list.innerHTML = `<div style="text-align:center;color:var(--text3);padding:60px 20px;font-size:14px;">아직 기록이 없어요<br><span style="font-size:24px;display:block;margin-top:12px;">📭</span></div>`;
+      return;
+    }
+    list.innerHTML = all.map(([k, r]) => {
+      const d = new Date(k);
+      const days = ['일','월','화','수','목','금','토'];
+      const dur = getDuration(r);
+      return `<div class="history-item">
+        <div class="h-dot"></div>
+        <div class="h-date">${k} (${days[d.getDay()]})</div>
+        <div class="h-times">${r.in||'-'} → ${r.out||'-'}</div>
+        <div class="h-dur">${dur ? minToHm(dur) : '-'}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function openOverlay(mode) {
+    currentMode = mode;
+    const now = new Date();
+    document.getElementById('overlay-title').textContent = mode === 'in' ? '출근 시간 입력' : '퇴근 시간 입력';
+    document.getElementById('input-hour').value = now.getHours();
+    document.getElementById('input-min').value = now.getMinutes();
+    document.getElementById('overlay').classList.add('show');
+    setTimeout(() => document.getElementById('input-hour').focus(), 200);
+  }
+
+  function closeOverlay() {
+    document.getElementById('overlay').classList.remove('show');
+  }
+
+  function saveTime() {
+    const h = parseInt(document.getElementById('input-hour').value);
+    const m = parseInt(document.getElementById('input-min').value);
+    if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
+      alert('올바른 시간을 입력해주세요');
+      return;
+    }
+    const key = todayKey();
+    if (!records[key]) records[key] = {};
+    records[key][currentMode] = formatTime(h, m);
+    save();
+    closeOverlay();
+    updateAll();
+  }
+
+  function switchPage(name, el) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    el.classList.add('active');
+    if (name === 'chart') updateChart();
+    if (name === 'history') updateHistory();
+  }
+
+  function updateAll() {
+    updateHome();
+    updateChart();
+    updateHistory();
+  }
+
+  // Long press on time display to edit
+  document.getElementById('today-in').addEventListener('click', () => {
+    const rec = records[todayKey()] || {};
+    if (rec.in) openOverlay('in');
+  });
+  document.getElementById('today-out').addEventListener('click', () => {
+    const rec = records[todayKey()] || {};
+    if (rec.out) openOverlay('out');
+  });
+
+  // Input auto-jump
+  document.getElementById('input-hour').addEventListener('input', function() {
+    if (this.value.length >= 2) document.getElementById('input-min').focus();
+  });
+
+  // Close overlay on background click
+  document.getElementById('overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeOverlay();
+  });
+
+  // Init
+  load();
+  updateAll();
+  updateClock();
+  setInterval(updateClock, 10000);
+</script>
+</body>
+</html>
